@@ -19,6 +19,9 @@
           <li class="nav-item">
             <router-link class="nav-link" :class="{ active: $route.name === 'addresses' }" to="/addresses">地址管理</router-link>
           </li>
+          <li class="nav-item">
+            <router-link class="nav-link" :class="{ active: $route.name === 'dataChanges' }" to="/data-changes">数据变更记录</router-link>
+          </li>
         </ul>
         <div class="ms-auto">
           <span class="navbar-text">{{ currentTime }}</span>

@@ -3,6 +3,7 @@ package com.example.plc.service;
 import com.example.plc.entity.PlcAddress;
 import com.example.plc.entity.PlcDevice;
 import com.example.plc.repository.PlcAddressRepository;
+import com.example.plc.service.PlcAddressChangeLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,17 +21,20 @@ public class PlcDataCollectionService {
     private final PlcCommunicationService communicationService;
     private final PlcDeviceService plcDeviceService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final PlcAddressChangeLogService changeLogService;
     private final Map<Long, Object> plcStatusMap = new ConcurrentHashMap<>();
 
     @Autowired
     public PlcDataCollectionService(PlcAddressRepository addressRepository,
                                     PlcCommunicationService communicationService,
                                     PlcDeviceService plcDeviceService,
-                                    SimpMessagingTemplate messagingTemplate) {
+                                    SimpMessagingTemplate messagingTemplate,
+                                    PlcAddressChangeLogService changeLogService) {
         this.addressRepository = addressRepository;
         this.communicationService = communicationService;
         this.plcDeviceService = plcDeviceService;
         this.messagingTemplate = messagingTemplate;
+        this.changeLogService = changeLogService;
     }
 
     @Scheduled(fixedRateString = "${plc.refresh-interval}")
@@ -65,6 +69,9 @@ public class PlcDataCollectionService {
             for (PlcAddress address : deviceAddresses) {
                 CompletableFuture<?> future = communicationService.readValue(address)
                     .thenAccept(value -> {
+                        // 保存旧值用于比较
+                        Object oldValue = plcStatusMap.get(address.getId());
+                        
                         // ConcurrentHashMap不允许null值，所以需要处理null情况
                         if (value != null) {
                             plcStatusMap.put(address.getId(), value);
@@ -84,6 +91,11 @@ public class PlcDataCollectionService {
                                 // 使用之前的值
                                 value = plcStatusMap.get(address.getId());
                             }
+                        }
+                        
+                        // 比较新旧值，如果不同且地址配置为入库，则记录变更历史
+                        if (oldValue != null && !oldValue.equals(value) && address.isStoreInDb()) {
+                            changeLogService.recordChange(address, oldValue.toString(), value.toString());
                         }
                         
                         // 创建PLC数据对象
@@ -127,6 +139,7 @@ public class PlcDataCollectionService {
     
     // PLC数据传输对象
     public static class PlcData {
+
         private Long id;
         private String name;
         private String address;

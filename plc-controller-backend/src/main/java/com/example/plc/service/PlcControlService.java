@@ -2,6 +2,7 @@ package com.example.plc.service;
 
 import com.example.plc.entity.PlcAddress;
 import com.example.plc.repository.PlcAddressRepository;
+import com.example.plc.service.PlcAddressChangeLogService;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -13,19 +14,30 @@ public class PlcControlService {
     private final PlcAddressRepository addressRepository;
     private final PlcCommunicationService communicationService;
     private final PlcDataCollectionService dataCollectionService;
+    private final PlcAddressChangeLogService changeLogService;
 
     public PlcControlService(PlcAddressRepository addressRepository,
                             PlcCommunicationService communicationService,
-                            PlcDataCollectionService dataCollectionService) {
+                            PlcDataCollectionService dataCollectionService,
+                            PlcAddressChangeLogService changeLogService) {
         this.addressRepository = addressRepository;
         this.communicationService = communicationService;
         this.dataCollectionService = dataCollectionService;
+        this.changeLogService = changeLogService;
     }
 
     public CompletableFuture<Boolean> controlPlcAddress(Long addressId, Object value) {
         Optional<PlcAddress> addressOptional = addressRepository.findById(addressId);
         if (addressOptional.isPresent()) {
             PlcAddress address = addressOptional.get();
+            // 获取旧值
+            Object oldValue = getCurrentValue(addressId);
+            String oldValueStr = oldValue != null ? oldValue.toString() : "null";
+            String newValueStr = value != null ? value.toString() : "null";
+            
+            // 无论设备是否连接，只要地址配置为入库，就记录变更
+            changeLogService.recordChange(address, oldValueStr, newValueStr);
+            
             return communicationService.writeValue(address, value)
                     .thenApply(result -> {
                         if (result) {

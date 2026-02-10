@@ -30,13 +30,14 @@
               <th>数据类型</th>
               <th>关联设备</th>
               <th>按钮方案</th>
+              <th>是否入库</th>
               <th>描述</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody id="addressList">
             <tr v-if="filteredAddresses.length === 0">
-              <td colspan="10" class="text-center">没有符合条件的地址</td>
+              <td colspan="11" class="text-center">没有符合条件的地址</td>
             </tr>
             <tr v-for="address in filteredAddresses" :key="address.id">
               <td><input type="checkbox" class="addressCheckbox" :value="address.id" v-model="selectedAddressIds"></td>
@@ -47,6 +48,7 @@
               <td>{{ address.dataType === 'BOOLEAN' ? '布尔' : '数值' }}</td>
               <td>{{ address.deviceId ? `${getDeviceById(address.deviceId)?.name || ''} (${getDeviceById(address.deviceId)?.ip || ''}:${getDeviceById(address.deviceId)?.port || ''})` : '-' }}</td>
               <td>{{ address.buttonSchemeId ? `${getButtonSchemeById(address.buttonSchemeId)?.name || ''}` : '-' }}</td>
+              <td>{{ address.isStoreInDb ? '是' : '否' }}</td>
               <td>{{ address.description || '-' }}</td>
               <td>
                 <button class="btn btn-sm btn-primary" @click="editAddress(address)">编辑</button>
@@ -126,6 +128,14 @@
                 <option v-for="scheme in buttonSchemes" :key="scheme.id" :value="scheme.id">{{ scheme.name }}</option>
               </select>
             </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="storeInDb" v-model="editingAddress.isStoreInDb">
+                <label class="form-check-label" for="storeInDb">
+                  是否入库
+                </label>
+              </div>
+            </div>
           </form>
         </div>
         <div class="modal-footer">
@@ -184,7 +194,8 @@ const editingAddress = ref({
   dataType: 'NUMBER',
   deviceId: '',
   buttonSchemeId: '',
-  description: ''
+  description: '',
+  isStoreInDb: false
 })
 
 // 计算属性 - 筛选后的地址列表
@@ -229,7 +240,9 @@ const loadAddresses = async () => {
   try {
     const response = await axios.get('/api/addresses')
     addresses.value = response.data
+    console.log('Loaded addresses:', addresses.value)
   } catch (error) {
+    console.error('Error loading addresses:', error)
     // 加载地址列表失败
   }
 }
@@ -242,7 +255,13 @@ const addAddress = () => {
 }
 
 const editAddress = (address) => {
+  console.log('Editing address:', address)
   editingAddress.value = { ...address }
+  // 确保isStoreInDb字段存在
+  if (editingAddress.value.isStoreInDb === undefined) {
+    editingAddress.value.isStoreInDb = false
+  }
+  console.log('Editing address after assignment:', editingAddress.value)
   // 显示模态框
   const modal = new bootstrap.Modal(document.getElementById('addModal'))
   modal.show()
@@ -257,7 +276,8 @@ const saveAddress = async () => {
       dataType: editingAddress.value.dataType,
       deviceId: editingAddress.value.deviceId || null,
       buttonSchemeId: editingAddress.value.buttonSchemeId || null,
-      description: editingAddress.value.description
+      description: editingAddress.value.description,
+      isStoreInDb: editingAddress.value.isStoreInDb
     }
     
     let url = '/api/addresses'
@@ -312,7 +332,8 @@ const resetEditingAddress = () => {
     dataType: 'NUMBER',
     deviceId: '',
     buttonSchemeId: '',
-    description: ''
+    description: '',
+    isStoreInDb: false
   }
 }
 

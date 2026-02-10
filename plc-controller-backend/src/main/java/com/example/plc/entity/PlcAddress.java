@@ -1,5 +1,6 @@
 package com.example.plc.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.persistence.*;
 
 @Entity
@@ -31,6 +32,10 @@ public class PlcAddress {
 
     @Column(name = "button_scheme_id")
     private Long buttonSchemeId;
+
+    @Column(name = "is_store_in_db", nullable = false, columnDefinition = "boolean default false")
+    @JsonProperty("isStoreInDb")
+    private boolean isStoreInDb = false;
 
     public enum AddressType {
         INPUT, OUTPUT
@@ -103,5 +108,13 @@ public class PlcAddress {
 
     public void setButtonSchemeId(Long buttonSchemeId) {
         this.buttonSchemeId = buttonSchemeId;
+    }
+
+    public boolean isStoreInDb() {
+        return isStoreInDb;
+    }
+
+    public void setStoreInDb(boolean storeInDb) {
+        isStoreInDb = storeInDb;
     }
 }

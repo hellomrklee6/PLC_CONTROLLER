@@ -28,6 +28,11 @@ const router = createRouter({
       path: '/button-schemes',
       name: 'buttonSchemes',
       component: () => import('../views/ButtonSchemesView.vue')
+    },
+    {
+      path: '/data-changes',
+      name: 'dataChanges',
+      component: () => import('../views/DataChangesView.vue')
     }
   ]
 })
