@@ -18,13 +18,13 @@
           <div class="col-md-4">
             <div class="form-group">
               <label for="startTime">开始时间</label>
-              <input type="datetime-local" class="form-control" id="startTime" v-model="filter.startTime">
+              <input type="text" class="form-control" id="startTime" v-model="filter.startTime" placeholder="yyyy-mm-dd hh:mi:ss">
             </div>
           </div>
           <div class="col-md-4">
             <div class="form-group">
               <label for="endTime">结束时间</label>
-              <input type="datetime-local" class="form-control" id="endTime" v-model="filter.endTime">
+              <input type="text" class="form-control" id="endTime" v-model="filter.endTime" placeholder="yyyy-mm-dd hh:mi:ss">
             </div>
           </div>
         </div>
@@ -126,7 +126,6 @@ export default {
     }
   },
   mounted() {
-    this.setDefaultTimeRange();
     this.loadAddresses();
     // 延迟搜索，确保地址加载完成
     setTimeout(() => {
@@ -172,8 +171,23 @@ export default {
     // 搜索变更记录
     async search() {
       try {
-        // 暂时简化为直接调用基础API，不使用时间范围过滤
         let url = `/api/changelogs?page=${this.currentPage}&size=${this.pageSize}`;
+        
+        // 构建查询参数
+        if (this.filter.addressId && this.filter.startTime && this.filter.endTime) {
+          // 按地址ID和时间范围查询
+          const startTime = this.parseDateTime(this.filter.startTime).toISOString();
+          const endTime = this.parseDateTime(this.filter.endTime).toISOString();
+          url = `/api/changelogs/address/${this.filter.addressId}/time-range?startTime=${startTime}&endTime=${endTime}&page=${this.currentPage}&size=${this.pageSize}`;
+        } else if (this.filter.addressId) {
+          // 按地址ID查询
+          url = `/api/changelogs/address/${this.filter.addressId}?page=${this.currentPage}&size=${this.pageSize}`;
+        } else if (this.filter.startTime && this.filter.endTime) {
+          // 按时间范围查询
+          const startTime = this.parseDateTime(this.filter.startTime).toISOString();
+          const endTime = this.parseDateTime(this.filter.endTime).toISOString();
+          url = `/api/changelogs/time-range?startTime=${startTime}&endTime=${endTime}&page=${this.currentPage}&size=${this.pageSize}`;
+        }
         
         const response = await fetch(url);
         
@@ -207,7 +221,6 @@ export default {
         startTime: '',
         endTime: ''
       };
-      this.setDefaultTimeRange();
       this.currentPage = 1;
       this.search();
     },
@@ -229,7 +242,26 @@ export default {
     // 格式化日期时间
     formatDateTime(dateTimeString) {
       const date = new Date(dateTimeString);
-      return date.toLocaleString();
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    },
+    
+    // 解析日期时间字符串
+    parseDateTime(dateTimeString) {
+      // 解析 yyyy-mm-dd hh:mi:ss 格式的时间字符串
+      const parts = dateTimeString.split(/[-\s:]/);
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // 月份从0开始
+      const day = parseInt(parts[2]);
+      const hours = parseInt(parts[3]);
+      const minutes = parseInt(parts[4]);
+      const seconds = parseInt(parts[5]);
+      return new Date(year, month, day, hours, minutes, seconds);
     }
   }
 }
